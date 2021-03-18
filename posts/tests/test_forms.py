@@ -1,0 +1,160 @@
+import shutil
+import tempfile
+
+from django import forms
+from django.conf import settings
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import Client, TestCase, override_settings
+from django.urls import reverse
+from django.core.cache import cache
+
+from posts.forms import PostForm
+from posts.models import Group, Post, User, Comment
+
+settings.MEDIA_ROOT = tempfile.mkdtemp(prefix='test1', dir=settings.BASE_DIR)
+
+USERNAME = 'test_user'
+SLUG = 'test_slug'
+SLUG_2 = 'test_grou_2'
+INDEX_URL = reverse('posts:index')
+GROUP_URL = reverse('posts:group', args=[SLUG])
+NEW_POST_URL = reverse('posts:new_post')
+PROFILE_URL = reverse('posts:profile', args=[USERNAME])
+ABOUT_AUTHOR_URL = reverse('about:author')
+ABOUT_TECH_URL = reverse('about:tech')
+SMALL_GIF = (
+            b'\x47\x49\x46\x38\x39\x61\x02\x00'
+            b'\x01\x00\x80\x00\x00\x00\x00\x00'
+            b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
+            b'\x00\x00\x00\x2C\x00\x00\x00\x00'
+            b'\x02\x00\x01\x00\x00\x02\x02\x0C'
+            b'\x0A\x00\x3B'
+        )
+
+
+@override_settings(MEDIA_ROOT=settings.MEDIA_ROOT)
+class PostFormTests(TestCase):
+    @classmethod
+    def setUpClass(cls):     # setUpClass был добавлен
+        super().setUpClass()
+       # settings.MEDIA_ROOT = tempfile.mkdtemp(prefix='test1', dir=settings.BASE_DIR)
+        cls.form = PostForm()
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(settings.MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
+
+    def setUp(self):
+        self.user = User.objects.create(username=USERNAME)
+        self.authorized_client = Client()
+        self.authorized_client.force_login(self.user)
+        self.group = Group.objects.create(
+            title="Тестовая группа",
+            description="Группа для тестирования",
+            slug=SLUG
+        )
+        self.post = Post.objects.create(
+            text='Тестовый текст',
+            author=self.user,
+            group=self.group,
+        )
+        self.POST_EDIT_PAGE_URL = reverse(
+            'posts:post_edit',
+            args=[USERNAME, self.post.id]
+        )
+        self.POST_PAGE_URL = reverse(
+            'posts:post',
+            args=[USERNAME, self.post.id]
+        )
+        self.ADD_COMMENT_PAGE_URL = reverse(
+            'posts:add_comment',
+            args=[USERNAME, self.post.id]
+        )
+
+    def test_create_post(self):
+        """Валидная форма создает пост в Post."""
+        Post.objects.all().delete()
+        cache.clear()
+        uploaded = SimpleUploadedFile(
+            name='smaaaaaaaaall.gif',
+            content=SMALL_GIF,
+            content_type='image/gif',
+        )
+        text = 'post with image'
+        form_data = {
+            'group': self.group.id,
+            'text': text,
+            'image': uploaded,
+        }
+        response = self.authorized_client.post(
+            reverse('posts:new_post'),
+            data=form_data,
+            follow=True
+        )
+        self.assertRedirects(response, reverse('posts:index'))
+        self.assertTrue(len(response.context['page']) == 1)
+        last_post = response.context['page'][0]
+        self.assertEqual(last_post.text, form_data['text'])
+        self.assertEqual(last_post.group.id, form_data['group'])  
+        self.assertEqual(last_post.author.username, self.user.username)
+        image_data = form_data['image']
+        self.assertEqual(last_post.image.name, f'posts/{image_data.name}')
+
+    def test_edit_post(self):
+        """При редактировании поста, изменяется запись в базе данных."""
+        group_2 = Group.objects.create(
+            title="Тестовая группа 2",
+            slug=SLUG_2
+        )
+        form_data = {
+            'text': 'Измененный пост',
+            'group': group_2.id,
+        }
+        response = self.authorized_client.post(
+            self.POST_EDIT_PAGE_URL,
+            data=form_data,
+            follow=True
+        )
+        self.assertRedirects(response, self.POST_PAGE_URL)
+        current_post = response.context['post']
+        self.assertEqual(current_post.text, form_data['text'])
+        self.assertEqual(current_post.group.id, form_data['group'])
+        self.assertEqual(current_post.author.username, self.user.username)
+
+    def test_new_post_page_show_correct_context(self):
+        """Шаблон new_post сформирован с правильным контекстом."""
+        response = self.authorized_client.get(NEW_POST_URL)
+        # Список ожидаемых типов полей формы:
+        # указываем, объектами какого класса должны быть поля формы
+        form_fields = {
+            'text': forms.fields.CharField,
+            'group': forms.fields.ChoiceField,
+            'image': forms.fields.ImageField
+        }
+        for value, expected in form_fields.items():
+            with self.subTest(value=value):
+                form_field = response.context['form'].fields[value]
+                self.assertIsInstance(form_field, expected)
+    
+
+    def test_create_comment(self):
+        """Валидная форма создает запись в Comment."""
+        Comment.objects.all().delete()
+        form_data = {
+            'text': 'Тестовый комментарий',
+            'author': self.user,
+            'post': self.post,
+        }
+        response = self.authorized_client.post(
+            self.ADD_COMMENT_PAGE_URL,
+            data=form_data,
+            follow=True,
+        )   
+        self.assertRedirects(response, self.POST_PAGE_URL)
+        self.assertTrue(len(self.authorized_client.post(
+            self.POST_PAGE_URL).context['comments']) == 1)
+        last_comment = self.authorized_client.post(
+            self.POST_PAGE_URL).context['comments'][0]
+        self.assertEqual(last_comment.text, form_data['text'])
+        self.assertEqual(last_comment.author.username, self.user.username)
