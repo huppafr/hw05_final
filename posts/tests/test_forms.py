@@ -1,12 +1,11 @@
 import shutil
 import tempfile
-
 from django import forms
 from django.conf import settings
+from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
-from django.core.cache import cache
 
 from posts.forms import PostForm
 from posts.models import Group, Post, User, Comment
@@ -23,13 +22,13 @@ PROFILE_URL = reverse('posts:profile', args=[USERNAME])
 ABOUT_AUTHOR_URL = reverse('about:author')
 ABOUT_TECH_URL = reverse('about:tech')
 SMALL_GIF = (
-            b'\x47\x49\x46\x38\x39\x61\x02\x00'
-            b'\x01\x00\x80\x00\x00\x00\x00\x00'
-            b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
-            b'\x00\x00\x00\x2C\x00\x00\x00\x00'
-            b'\x02\x00\x01\x00\x00\x02\x02\x0C'
-            b'\x0A\x00\x3B'
-        )
+    b'\x47\x49\x46\x38\x39\x61\x02\x00'
+    b'\x01\x00\x80\x00\x00\x00\x00\x00'
+    b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
+    b'\x00\x00\x00\x2C\x00\x00\x00\x00'
+    b'\x02\x00\x01\x00\x00\x02\x02\x0C'
+    b'\x0A\x00\x3B'
+)
 
 
 @override_settings(MEDIA_ROOT=settings.MEDIA_ROOT)
@@ -95,7 +94,7 @@ class PostFormTests(TestCase):
         self.assertTrue(len(response.context['page']) == 1)
         last_post = response.context['page'][0]
         self.assertEqual(last_post.text, form_data['text'])
-        self.assertEqual(last_post.group.id, form_data['group'])  
+        self.assertEqual(last_post.group.id, form_data['group'])
         self.assertEqual(last_post.author.username, self.user.username)
         image_data = form_data['image']
         self.assertEqual(last_post.image.name, f'posts/{image_data.name}')
