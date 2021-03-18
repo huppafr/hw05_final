@@ -135,7 +135,6 @@ class PostFormTests(TestCase):
             with self.subTest(value=value):
                 form_field = response.context['form'].fields[value]
                 self.assertIsInstance(form_field, expected)
-    
 
     def test_create_comment(self):
         """Валидная форма создает запись в Comment."""
@@ -149,7 +148,7 @@ class PostFormTests(TestCase):
             self.ADD_COMMENT_PAGE_URL,
             data=form_data,
             follow=True,
-        )   
+        )
         self.assertRedirects(response, self.POST_PAGE_URL)
         self.assertTrue(len(self.authorized_client.post(
             self.POST_PAGE_URL).context['comments']) == 1)

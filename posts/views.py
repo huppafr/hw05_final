@@ -54,8 +54,8 @@ def profile(request, username):
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
     following = (
-            request.user.is_authenticated
-            and author.following.filter(user=request.user).exists()
+            request.user.is_authenticated and
+            author.following.filter(user=request.user).exists()
     )
     return render(request, 'profile.html', {
         'page': page,
@@ -148,7 +148,7 @@ def profile_unfollow(request, username):
 
 
 def page_not_found(request, exception):
-    # Переменная exception содержит отладочную информацию, 
+    # Переменная exception содержит отладочную информацию,
     # выводить её в шаблон пользователской страницы 404 мы не станем
     return render(
         request,

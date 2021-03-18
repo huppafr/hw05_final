@@ -136,7 +136,7 @@ class PostPagesTests(TestCase):
         self.assertNotIn(new_post, response.context['page'])
 
     def test_image_includes_in_page_context(self):
-        '''При выводе поста с картинкой на запрашиваемой странице, 
+        '''При выводе поста с картинкой на запрашиваемой странице,
         image передаётся в context этой страницы'''
         Post.objects.all().delete()
         cache.clear()
@@ -164,10 +164,11 @@ class PostPagesTests(TestCase):
         for current_url in page_urls:
             cache.clear()
             image_data = form_data['image']
-            self.assertEqual(self.authorized_client.get(
-                current_url).context['page'][0].image.name,
-                             f'posts/{image_data.name}'
-                             )
+            self.assertEqual(
+                self.authorized_client.get(
+                    current_url).context['page'][0].image.name,
+                f'posts/{image_data.name}'
+            )
 
     def test_author_can_not_follow_himself(self):
         """Проверка невозможности подписки на самого себя"""
