@@ -163,6 +163,7 @@ class PostPagesTests(TestCase):
         ]
         for current_url in page_urls:
             cache.clear()
+            self.assertRedirects(response, INDEX_URL)
             image_data = form_data['image']
             self.assertEqual(
                 self.authorized_client.get(
