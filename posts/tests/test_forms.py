@@ -35,9 +35,8 @@ SMALL_GIF = (
 @override_settings(MEDIA_ROOT=settings.MEDIA_ROOT)
 class PostFormTests(TestCase):
     @classmethod
-    def setUpClass(cls):     # setUpClass был добавлен
+    def setUpClass(cls):
         super().setUpClass()
-       # settings.MEDIA_ROOT = tempfile.mkdtemp(prefix='test1', dir=settings.BASE_DIR)
         cls.form = PostForm()
 
     @classmethod

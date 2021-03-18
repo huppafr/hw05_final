@@ -7,7 +7,6 @@ from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from posts.models import Post, Group, User, Follow
-from yatube.settings import MEDIA_ROOT, BASE_DIR
 
 settings.MEDIA_ROOT = tempfile.mkdtemp(prefix='test2', dir=settings.BASE_DIR)
 
@@ -25,7 +24,6 @@ ABOUT_AUTHOR_URL = reverse('about:author')
 ABOUT_TECH_URL = reverse('about:tech')
 PROFILE_FOLLOW_URL = reverse('posts:profile_follow', args=[AUTHOR_1])
 PROFILE_UNFOLLOW_URL = reverse('posts:profile_unfollow', args=[AUTHOR_1])
-# PROFILE_FOLLOW = reverse("posts:profile_follow", args=[USERNAME]) # что это за дичь?
 
 SMALL_GIF = (
     b'\x47\x49\x46\x38\x39\x61\x02\x00'
@@ -61,7 +59,10 @@ class PostPagesTests(TestCase):
             author=cls.user,
             group=cls.group,
         )
-        cls.POST_PAGE_URL = reverse('posts:post', args=[USERNAME, cls.post.id])
+        cls.POST_PAGE_URL = reverse(
+            'posts:post',
+            args=[USERNAME, cls.post.id]
+        )
 
     @classmethod
     def tearDownClass(cls):

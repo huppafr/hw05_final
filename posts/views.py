@@ -1,8 +1,7 @@
-from django.core.paginator import Paginator
-from django.contrib.auth.decorators import login_required
 from django.conf import settings
+from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
 from django.views.decorators.cache import cache_page
 
 from .forms import PostForm, CommentForm
@@ -55,8 +54,8 @@ def profile(request, username):
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
     following = (
-        request.user.is_authenticated
-        and author.following.filter(user=request.user).exists()
+            request.user.is_authenticated
+            and author.following.filter(user=request.user).exists()
     )
     return render(request, 'profile.html', {
         'page': page,
@@ -71,8 +70,8 @@ def post_view(request, username, post_id):
     author = get_object_or_404(User, username=username)
     comments = Comment.objects.filter(post=post)
     following = (
-        request.user.is_authenticated
-        and author.following.filter(user=request.user).exists()
+            request.user.is_authenticated
+            and author.following.filter(user=request.user).exists()
     )
     form = CommentForm()
     return render(request, 'post.html', {
@@ -152,9 +151,9 @@ def page_not_found(request, exception):
     # Переменная exception содержит отладочную информацию, 
     # выводить её в шаблон пользователской страницы 404 мы не станем
     return render(
-        request, 
-        "misc/404.html", 
-        {"path": request.path}, 
+        request,
+        "misc/404.html",
+        {"path": request.path},
         status=404
     )
 

@@ -35,7 +35,7 @@ class Post(models.Model):
         null=True,
         verbose_name='Изображение',
         help_text='Выбрать файл',
-    ) 
+    )
 
     class Meta:
         verbose_name = 'Пост'
@@ -92,7 +92,7 @@ class Comment(models.Model):
         verbose_name='Текст',
         help_text='Введите текст комментcария',
     )
-    created =models.DateTimeField(
+    created = models.DateTimeField(
         verbose_name='Дата создания',
         auto_now_add=True
     )
@@ -101,7 +101,7 @@ class Comment(models.Model):
         verbose_name = 'Комментарий'
         verbose_name_plural = 'Комментарии'
         ordering = ['-created']
-    
+
     def __str__(self):
         return self.text[:15]
 
