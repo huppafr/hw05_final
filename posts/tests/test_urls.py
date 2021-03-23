@@ -116,7 +116,7 @@ class PostURLTests(TestCase):
                 )
 
     def test_author_cant_edit_posts_of_the_other_authors(self):
-        """Авторизированный пользователь, не являющийся автором поста 
+        """Авторизированный пользователь, не являющийся автором поста
         будет перенаправлен при попытке редактирования чужих постов"""
         another_user = User.objects.create(username=USERNAME_2)
         self.authorized_client.force_login(another_user)

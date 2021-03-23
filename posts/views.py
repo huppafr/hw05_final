@@ -54,10 +54,11 @@ def profile(request, username):
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
     following = (
-            request.user.is_authenticated
-            and Follow.objects.filter(
-        user=request.user,
-        author=author).exists())
+        request.user.is_authenticated
+        and Follow.objects.filter(
+            user=request.user,
+            author=author).exists()
+    )
     return render(request, 'profile.html', {
         'page': page,
         'author': author,
@@ -70,10 +71,11 @@ def post_view(request, username, post_id):
     post = get_object_or_404(Post, author__username=username, id=post_id)
     comments = post.comments.all()
     following = (
-            request.user.is_authenticated
-            and Follow.objects.filter(
-        user=request.user,
-        author=post.author).exists())
+        request.user.is_authenticated
+        and Follow.objects.filter(
+            user=request.user,
+            author=post.author).exists()
+    )
     print(following)
     form = CommentForm()
     return render(request, 'post.html', {
@@ -86,12 +88,12 @@ def post_view(request, username, post_id):
 
 
 @login_required
-def add_comment(request, username, post_id):  # комменты сохраняются не под юзером, а под автором поста
+def add_comment(request, username, post_id):
     post = get_object_or_404(Post, id=post_id,
                              author__username=username)
     form = CommentForm(request.POST or None)
     if not form.is_valid():
-        return render(request, 'post.html', {'form': form})  # правильно ли это?
+        return render(request, 'post.html', {'form': form})
     comment = form.save(commit=False)
     comment.author = request.user
     comment.post = post
@@ -145,7 +147,11 @@ def profile_follow(request, username):
 def profile_unfollow(request, username):
     """Функция для отписки от автора"""
     author = get_object_or_404(User, username=username)
-    user_following_author = get_object_or_404(Follow, user=request.user, author=author)
+    user_following_author = get_object_or_404(
+        Follow,
+        user=request.user,
+        author=author
+    )
     if user_following_author:
         Follow.objects.filter(user=request.user, author=author).delete()
         return redirect('posts:profile', username=username)
