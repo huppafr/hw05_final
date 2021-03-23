@@ -16,6 +16,7 @@ AUTHOR_1 = 'test_author'
 SLUG = 'test_slug'
 SLUG_2 = 'test_slug_2'
 INDEX_URL = reverse('posts:index')
+FOLLOW_INDEX_URL = reverse('posts:follow_index')
 GROUP_URL = reverse('posts:group', args=[SLUG])
 GROUP_2_URL = reverse('posts:group', args=[SLUG_2])
 NEW_POST_URL = reverse('posts:new_post')
@@ -54,10 +55,17 @@ class PostPagesTests(TestCase):
             slug=SLUG_2,
             description='Много букв 2'
         )
+        uploaded = SimpleUploadedFile(
+            name='small.gif',
+            content=SMALL_GIF,
+            content_type='image/gif',
+        )
         cls.post = Post.objects.create(
             text='Пост из фикстуры',
             author=cls.user,
             group=cls.group,
+            image=uploaded,
+
         )
         cls.POST_PAGE_URL = reverse(
             'posts:post',
@@ -72,10 +80,6 @@ class PostPagesTests(TestCase):
     def setUp(self):
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
-        self.authorized_client_1 = Client()
-        self.authorized_client_1.force_login(self.author)
-        self.authorized_client_2 = Client()
-        self.authorized_client_2.force_login(self.another_user)
 
     def test_pages_show_correct_context(self):
         """Шаблоны сформированы с правильным контекстом."""
@@ -121,71 +125,13 @@ class PostPagesTests(TestCase):
         response = self.authorized_client.get(self.POST_PAGE_URL)
         self.assertEquals(response.context['post'], self.post)
 
-    def test_index_page_cashe(self):
-        """Тест кеша главной страницы"""
-        cache.clear()
-        # Убеждаемся, что количество постов на странице = 1
-        response = self.authorized_client.get(INDEX_URL)
-        self.assertTrue(len(response.context['page']) == 1)
-        self.assertIn(self.post, response.context['page'])
-        new_post = Post.objects.create(
-            text='Проверка кеша',
-            author=self.user,
-            group=self.group,
-        )
-        self.assertNotIn(new_post, response.context['page'])
-
-    def test_image_includes_in_page_context(self):
-        '''При выводе поста с картинкой на запрашиваемой странице,
-        image передаётся в context этой страницы'''
-        Post.objects.all().delete()
-        cache.clear()
-        uploaded = SimpleUploadedFile(
-            name='small.gif',
-            content=SMALL_GIF,
-            content_type='image/gif',
-        )
-        text = 'post with image'
-        form_data = {
-            'group': self.group.id,
-            'text': text,
-            'image': uploaded,
-        }
-        response = self.authorized_client.post(
-            reverse('posts:new_post'),
-            data=form_data,
-            follow=True
-        )
-        page_urls = [
-            INDEX_URL,
-            PROFILE_URL,
-            GROUP_URL,
-        ]
-        for current_url in page_urls:
-            cache.clear()
-            self.assertRedirects(response, INDEX_URL)
-            image_data = form_data['image']
-            self.assertEqual(
-                self.authorized_client.get(
-                    current_url).context['page'][0].image.name,
-                f'posts/{image_data.name}'
-            )
-
-    def test_author_can_not_follow_himself(self):
-        """Проверка невозможности подписки на самого себя"""
-        before_follow = self.author.follower.count()
-        self.authorized_client.get(PROFILE_FOLLOW_URL)
-        after_follow = self.author.follower.count()
-        self.assertEqual(before_follow, after_follow)
-
     def test_user_can_follow_author(self):
         """Проверка возможности подписки"""
         self.authorized_client.get(PROFILE_FOLLOW_URL)
-        after_follow = self.user.follower.count()
-        self.assertEqual(after_follow, 1)
-        self.authorized_client.get(PROFILE_FOLLOW_URL)
-        second_follow = self.user.follower.count()
-        self.assertTrue(after_follow == second_follow)
+        self.assertTrue(Follow.objects.get(
+            user=self.user,
+            author=self.author
+        ))
 
     def test_user_can_unfollow_author(self):
         """Проверка возможности отписки"""
@@ -194,64 +140,52 @@ class PostPagesTests(TestCase):
             author=self.author
         )
         self.authorized_client.get(PROFILE_UNFOLLOW_URL)
-        count = self.user.follower.count()
-        self.assertTrue(count == 0)
+        self.assertFalse(Follow.objects.filter(
+            user=self.user,
+            author=self.author).exists())
+
+    def test_user_cant_follow_himself(self):
+        """Проперка невозможности подписки на самого себя"""
+        self.authorized_client.get(reverse(
+            'posts:profile_follow',
+            args=[self.user]
+        ))
+        self.assertFalse(Follow.objects.filter(
+            user=self.user,
+            author=self.user).exists())
 
     def test_follow_context(self):
         """Новая запись пользователя появляется в ленте тех, кто на него
         подписан и не появляется в ленте тех, кто не подписан на него."""
+        Follow.objects.all().delete()
         Post.objects.all().delete()
-        self.authorized_client_1 = Client()
-        self.authorized_client_2 = Client()
-        self.authorized_client_1.force_login(self.author)
-        self.authorized_client_2.force_login(self.another_user)
+        Follow.objects.create(user=self.user, author=self.author)
+        post_2 = Post.objects.create(
+            text='трали-вали',
+            author=self.author
+        )
+        # проверим, что пост отобразился на странице подписок у юзера
+        self.assertIn(
+            post_2,
+            self.authorized_client.get(FOLLOW_INDEX_URL).context['page']
+        )
+        # залогинимся под другим юзером
+        self.authorized_client = Client()
+        self.authorized_client.force_login(self.another_user)
+        self.assertNotIn(
+            post_2,
+            self.authorized_client.get(FOLLOW_INDEX_URL).context['page']
+        )
 
+    def test_cache_after_time(self):
+        """Тест кеша страницы """
+        response_old = self.authorized_client.get(INDEX_URL)
         Post.objects.create(
-            author=self.author,
-            text='Тестовый текст',
-            group=self.group
-        )
-        Post.objects.create(
-            author=self.author,
-            text='Тестовый текст1',
-            group=self.group
-        )
-        Post.objects.create(
-            author=self.user,
-            text='Тестовый текст2',
-            group=self.group
-        )
-        Follow.objects.create(
-            user=self.user,
-            author=self.author
-        )
-        Follow.objects.create(
-            user=self.author,
+            text='abracadabra',
             author=self.user
         )
-        Follow.objects.create(
-            user=self.another_user,
-            author=self.user
-        )
-        Follow.objects.create(
-            user=self.another_user,
-            author=self.author
-        )
-        response = self.authorized_client.get(
-            reverse('posts:follow_index')
-        )
-        self.assertTrue(len(response.context['page']) == 2,
-                        'Проверьте, что на странице `/follow/` отображается'
-                        'список статей авторов на которых подписаны')
-        response_1 = self.authorized_client_1.get(
-            reverse('posts:follow_index')
-        )
-        self.assertTrue(len(response_1.context['page']) == 1,
-                        'Проверьте, что на странице `/follow/` отображается'
-                        'список статей авторов на которых подписаны')
-        response_2 = self.authorized_client_2.get(
-            reverse('posts:follow_index')
-        )
-        self.assertTrue(len(response_2.context['page']) == 3,
-                        'Проверьте, что на странице `/follow/` отображается'
-                        'список статей авторов на которых подписаны')
+        response_new = self.authorized_client.get(INDEX_URL)
+        self.assertEqual(response_old.content, response_new.content)
+        cache.clear()
+        response_newest = self.authorized_client.get(INDEX_URL)
+        self.assertNotEqual(response_old.content, response_newest.content)

@@ -8,15 +8,13 @@
            <h1>{{ group.title }}</h1>
            <p>{{ group.description|linebreaksbr }}</p>
             <!-- Вывод ленты записей -->
-                {% for post in page %}
-                  <!-- Вот он, новый include! -->
-                    {% include "post_item.html" with post=post %}
-                {% endfor %}
+            {% for post in page %}
+                <!-- Вот он, новый include! -->
+                {% include "post_item.html" with post=post do_not_show_group=True%}
+            {% endfor %}
     </div>
-
-        <!-- Вывод паджинатора -->
-        {% if page.has_other_pages %}
-            {% include "paginator.html" with items=page paginator=paginator%}
-        {% endif %}
-
+    <!-- Вывод паджинатора -->
+    {% if page.has_other_pages %}
+        {% include "paginator.html" with items=page paginator=paginator%}
+    {% endif %}
 {% endblock %} 

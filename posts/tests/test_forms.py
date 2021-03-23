@@ -86,11 +86,11 @@ class PostFormTests(TestCase):
             'image': uploaded,
         }
         response = self.authorized_client.post(
-            reverse('posts:new_post'),
+            NEW_POST_URL,
             data=form_data,
             follow=True
         )
-        self.assertRedirects(response, reverse('posts:index'))
+        self.assertRedirects(response, INDEX_URL)
         self.assertTrue(len(response.context['page']) == 1)
         last_post = response.context['page'][0]
         self.assertEqual(last_post.text, form_data['text'])
@@ -105,9 +105,15 @@ class PostFormTests(TestCase):
             title="Тестовая группа 2",
             slug=SLUG_2
         )
+        uploaded = SimpleUploadedFile(
+            name='smaaaaaaaaall.gif',
+            content=SMALL_GIF,
+            content_type='image/gif',
+        )
         form_data = {
-            'text': 'Измененный пост',
+            'text': 'Измененный текст',
             'group': group_2.id,
+            'image': uploaded,
         }
         response = self.authorized_client.post(
             self.POST_EDIT_PAGE_URL,
@@ -115,10 +121,7 @@ class PostFormTests(TestCase):
             follow=True
         )
         self.assertRedirects(response, self.POST_PAGE_URL)
-        current_post = response.context['post']
-        self.assertEqual(current_post.text, form_data['text'])
-        self.assertEqual(current_post.group.id, form_data['group'])
-        self.assertEqual(current_post.author.username, self.user.username)
+        self.assertEquals(response.context['post'], self.post)
 
     def test_new_post_page_show_correct_context(self):
         """Шаблон new_post сформирован с правильным контекстом."""
@@ -140,8 +143,6 @@ class PostFormTests(TestCase):
         Comment.objects.all().delete()
         form_data = {
             'text': 'Тестовый комментарий',
-            'author': self.user,
-            'post': self.post,
         }
         response = self.authorized_client.post(
             self.ADD_COMMENT_PAGE_URL,
@@ -149,9 +150,8 @@ class PostFormTests(TestCase):
             follow=True,
         )
         self.assertRedirects(response, self.POST_PAGE_URL)
-        self.assertTrue(len(self.authorized_client.post(
-            self.POST_PAGE_URL).context['comments']) == 1)
-        last_comment = self.authorized_client.post(
-            self.POST_PAGE_URL).context['comments'][0]
-        self.assertEqual(last_comment.text, form_data['text'])
-        self.assertEqual(last_comment.author.username, self.user.username)
+        self.assertTrue(len(response.context['comments']) == 1)
+        self.assertEquals(
+            response.context['comments'][0],
+            self.post.comments.get(post=self.post)
+        )

@@ -5,7 +5,7 @@
 {% block content %}
 <div class="container">
     <h1>Избранные авторы</h1>
-    {% include "menu.html" with index=True %}
+    {% include "menu.html" with follow=True %}
     <!-- Вывод ленты записей -->
     {% cache 1 sidebar %}
         {% for post in page %}

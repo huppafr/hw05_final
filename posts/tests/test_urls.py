@@ -1,7 +1,7 @@
 from django.conf import settings
+from django.core.cache import cache
 from django.test import TestCase, Client
 from django.urls import reverse
-from django.core.cache import cache
 
 from posts.models import Post, Group, User
 
@@ -22,6 +22,7 @@ class PostURLTests(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.user = User.objects.create(username=USERNAME)
+        cls.guest_client = Client()
         cls.group = Group.objects.create(
             title='Test',
             slug=SLUG,
@@ -40,11 +41,21 @@ class PostURLTests(TestCase):
             'posts:post',
             args=[USERNAME, cls.post.id]
         )
+        cls.PROFILE_FOLLOW_PAGE_URL = reverse(
+            'posts:profile_follow',
+            args=[USERNAME]
+        )
+        cls.PROFILE_UNFOLLOW_PAGE_URL = reverse(
+            'posts:profile_unfollow',
+            args=[USERNAME]
+        )
+        cls.ADD_COMMENT_PAGE_URL = reverse(
+            'posts:add_comment',
+            args=[USERNAME, cls.post.id]
+        )
 
     def setUp(self):
-        self.guest_client = Client()
         self.authorized_client = Client()
-        # Авторизуем пользователя
         self.authorized_client.force_login(self.user)
 
     def test_urls_uses_correct_template(self):
@@ -55,63 +66,62 @@ class PostURLTests(TestCase):
             GROUP_URL: 'group.html',
             NEW_POST_URL: 'new_post.html',
             PROFILE_URL: 'profile.html',
+            FOLLOW_INDEX_URL: 'follow.html',
             self.POST_PAGE_URL: 'post.html',
             self.POST_EDIT_PAGE_URL: 'new_post.html',
-            FOLLOW_INDEX_URL: 'follow.html'
         }
         for url, template in templates_url_names.items():
             with self.subTest(url=url):
-                response = self.authorized_client.get(url)
-                self.assertTemplateUsed(response, template)
+                self.assertTemplateUsed(
+                    self.authorized_client.get(url),
+                    template
+                )
 
     def test_user_can_get_current_pages(self):
         """Страницы доступны пользователям."""
         url_status_code = [
-            [self.guest_client.get(INDEX_URL).status_code,
-             200],
-            [self.guest_client.get(GROUP_URL).status_code,
-             200],
-            [self.guest_client.get(ABOUT_AUTHOR_URL).status_code,
-             200],
-            [self.guest_client.get(ABOUT_TECH_URL).status_code,
-             200],
-            [self.guest_client.get(PROFILE_URL).status_code,
-             200],
-            [self.guest_client.get(self.POST_PAGE_URL).status_code,
-             200],
-            [self.authorized_client.get(NEW_POST_URL).status_code,
-             200],
-            [self.authorized_client.get(
-                self.POST_EDIT_PAGE_URL).status_code,
-             200],
-            [self.authorized_client.get(FOLLOW_INDEX_URL).status_code,
-             200],
+            [INDEX_URL, 200],
+            [FOLLOW_INDEX_URL, 200],
+            [GROUP_URL, 200],
+            [ABOUT_AUTHOR_URL, 200],
+            [ABOUT_TECH_URL, 200],
+            [PROFILE_URL, 200],
+            [NEW_POST_URL, 200],
+            [self.POST_PAGE_URL, 200],
+            [self.POST_EDIT_PAGE_URL, 200],
         ]
-        for response_code, code in url_status_code:
+        for url, code in url_status_code:
             with self.subTest():
-                self.assertEquals(response_code, code)
+                self.assertEquals(
+                    self.authorized_client.get(url).status_code,
+                    code
+                )
 
     def test_guest_user_can_not_get_current_pages(self):
         """Страницы, доступные только авторизированным пользователям,
         перенаправят анонимного пользователя на страницу регистрации"""
+        urls = [
+            NEW_POST_URL,
+            FOLLOW_INDEX_URL,
+            self.POST_EDIT_PAGE_URL,
+            self.PROFILE_FOLLOW_PAGE_URL,
+            self.PROFILE_UNFOLLOW_PAGE_URL,
+            self.ADD_COMMENT_PAGE_URL,
+        ]
+        for url in urls:
+            with self.subTest():
+                self.assertRedirects(
+                    self.guest_client.get(url, follow=True),
+                    f'{settings.LOGIN_URL}?next={url}'
+                )
+
+    def test_author_cant_edit_posts_of_the_other_authors(self):
+        """Авторизированный пользователь, не являющийся автором поста 
+        будет перенаправлен при попытке редактирования чужих постов"""
         another_user = User.objects.create(username=USERNAME_2)
         self.authorized_client.force_login(another_user)
 
-        urls = [
-            [self.guest_client.get(NEW_POST_URL, follow=True),
-             f'{settings.LOGIN_URL}?next={NEW_POST_URL}'],
-            [self.guest_client.get(self.POST_EDIT_PAGE_URL, follow=True),
-             f'{settings.LOGIN_URL}?next={self.POST_EDIT_PAGE_URL}'],
-            [self.authorized_client.get(
-                self.POST_EDIT_PAGE_URL,
-                follow=True),
-                self.POST_PAGE_URL],
-            [self.guest_client.get(FOLLOW_INDEX_URL, follow=True),
-             f'{settings.LOGIN_URL}?next={FOLLOW_INDEX_URL}'],
-        ]
-        for page_url, checking_each_page in urls:
-            with self.subTest():
-                self.assertRedirects(
-                    page_url,
-                    checking_each_page
-                )
+        self.assertRedirects(
+            self.authorized_client.get(self.POST_EDIT_PAGE_URL, follow=True),
+            self.POST_PAGE_URL
+        )
