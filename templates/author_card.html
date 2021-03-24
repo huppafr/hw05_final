@@ -24,21 +24,19 @@
                 </div>
             </li>
         </ul>
-        {% if user.is_authenticated %} 
-            {% if author != request.user %}
-                <li class="list-group-item">
-                    {% if following %}
-                        <a class="btn btn-lg btn-light" 
-                            href="{% url 'posts:profile_unfollow' author.username %}"
-                            role="button">Отписаться</a> 
-                    {% else %}
-                        <a class="btn btn-lg btn-primary" 
-                            href="{% url 'posts:profile_follow' author.username %}"
-                            role="button">Подписаться</a> 
-                    {% endif %}
-                </li>
-            {% endif %}
-        {% else %}
+        {% if author != request.user and user.is_authenticated %}
+            <li class="list-group-item">
+                {% if following %}
+                    <a class="btn btn-lg btn-light" 
+                        href="{% url 'posts:profile_unfollow' author.username %}"
+                        role="button">Отписаться</a> 
+                {% else %}
+                    <a class="btn btn-lg btn-primary" 
+                        href="{% url 'posts:profile_follow' author.username %}"
+                        role="button">Подписаться</a> 
+                {% endif %}
+            </li>
+        {% elif user.is_anonymous %}
         {% endif %}
     </div>
 </div>

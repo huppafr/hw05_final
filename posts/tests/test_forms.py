@@ -37,6 +37,7 @@ class PostFormTests(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.form = PostForm()
+        cls.guest_client = Client()
 
     @classmethod
     def tearDownClass(cls):
@@ -52,20 +53,26 @@ class PostFormTests(TestCase):
             description="Группа для тестирования",
             slug=SLUG
         )
+        uploaded = SimpleUploadedFile(
+            name='small.gif',
+            content=SMALL_GIF,
+            content_type='image/gif',
+        )
         self.post = Post.objects.create(
             text='Тестовый текст',
             author=self.user,
             group=self.group,
+            image=uploaded
         )
-        self.POST_EDIT_PAGE_URL = reverse(
+        self.POST_EDIT_URL = reverse(
             'posts:post_edit',
             args=[USERNAME, self.post.id]
         )
-        self.POST_PAGE_URL = reverse(
+        self.POST_URL = reverse(
             'posts:post',
             args=[USERNAME, self.post.id]
         )
-        self.ADD_COMMENT_PAGE_URL = reverse(
+        self.ADD_COMMENT_URL = reverse(
             'posts:add_comment',
             args=[USERNAME, self.post.id]
         )
@@ -105,22 +112,16 @@ class PostFormTests(TestCase):
             title="Тестовая группа 2",
             slug=SLUG_2
         )
-        uploaded = SimpleUploadedFile(
-            name='smaaaaaaaaall.gif',
-            content=SMALL_GIF,
-            content_type='image/gif',
-        )
         form_data = {
             'text': 'Измененный текст',
             'group': group_2.id,
-            'image': uploaded,
         }
         response = self.authorized_client.post(
-            self.POST_EDIT_PAGE_URL,
+            self.POST_EDIT_URL,
             data=form_data,
             follow=True
         )
-        self.assertRedirects(response, self.POST_PAGE_URL)
+        self.assertRedirects(response, self.POST_URL)
         self.assertEquals(response.context['post'], self.post)
 
     def test_new_post_page_show_correct_context(self):
@@ -145,13 +146,45 @@ class PostFormTests(TestCase):
             'text': 'Тестовый комментарий',
         }
         response = self.authorized_client.post(
-            self.ADD_COMMENT_PAGE_URL,
+            self.ADD_COMMENT_URL,
             data=form_data,
             follow=True,
         )
-        self.assertRedirects(response, self.POST_PAGE_URL)
+        self.assertRedirects(response, self.POST_URL)
         self.assertTrue(len(response.context['comments']) == 1)
         self.assertEquals(
-            response.context['comments'][0],
-            self.post.comments.get(post=self.post)
+            response.context['comments'][0].text,
+            form_data['text']
         )
+        self.assertEquals(
+            response.context['comments'][0].author,
+            self.user
+        )
+    
+    def test_anonymous_user_cant_create_post(self):
+        """Анонимный пользователь не сможет создать пост"""
+        post_text = 'абракадабра'
+        form_data = {
+            'group': self.group.id,
+            'text': post_text
+        }
+        self.guest_client.post(
+            NEW_POST_URL,
+            data=form_data,
+            follow=True
+        )
+        self.assertFalse(Post.objects.filter(text=post_text).exists())
+
+    def test_anonymous_user_cant_edit_post(self):
+        """Анонимный пользователь не сможет создать пост"""
+        print(Post.objects.all()[0].group)
+        post_text = 'Измененный текст абракадабры'
+        form_data = {
+            'text': post_text,
+        }
+        self.guest_client.post(
+            self.POST_EDIT_URL,
+            data=form_data,
+            follow=True
+        )
+        self.assertFalse(Post.objects.filter(text=post_text).exists())

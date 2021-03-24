@@ -121,4 +121,4 @@ class Follow(models.Model):
     )
 
     def __str__(self):
-        return f'{self.user.username}: {self.author.username}'
+        return f'{self.user.username} subscribed to: {self.author.username}'

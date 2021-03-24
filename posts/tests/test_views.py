@@ -12,6 +12,7 @@ settings.MEDIA_ROOT = tempfile.mkdtemp(prefix='test2', dir=settings.BASE_DIR)
 
 USERNAME = 'test_user'
 USERNAME_2 = 'test_user_2'
+USERNAME_3 = 'test_user_3'
 AUTHOR_1 = 'test_author'
 SLUG = 'test_slug'
 SLUG_2 = 'test_slug_2'
@@ -45,6 +46,7 @@ class PostPagesTests(TestCase):
         cls.user = User.objects.create(username=USERNAME)
         cls.author = User.objects.create(username=AUTHOR_1)
         cls.another_user = User.objects.create(username=USERNAME_2)
+        cls.another_user_2 = User.objects.create(username=USERNAME_3)
         cls.group = Group.objects.create(
             title='Test',
             slug=SLUG,
@@ -67,30 +69,38 @@ class PostPagesTests(TestCase):
             image=uploaded,
 
         )
+        cls.PROFILE_UNFOLLOW_URL = reverse(
+            'posts:profile_unfollow',
+            args=[cls.author]
+        )
         cls.POST_PAGE_URL = reverse(
             'posts:post',
             args=[USERNAME, cls.post.id]
         )
+        user_1 = cls.authorized_client = Client()
+        user_1.force_login(cls.user)
+        user_2 = cls.authorized_client_2 = Client()
+        user_2.force_login(cls.another_user)
+        user_3 = cls.authorized_client_3 = Client()
+        user_3.force_login(cls.another_user_2)
 
     @classmethod
     def tearDownClass(cls):
         shutil.rmtree(settings.MEDIA_ROOT, ignore_errors=True)
         super().tearDownClass()
 
-    def setUp(self):
-        self.authorized_client = Client()
-        self.authorized_client.force_login(self.user)
-
     def test_pages_show_correct_context(self):
-        """Шаблоны сформированы с правильным контекстом."""
+        """Страница сформирована с правильным контекстом"""
         cache.clear()
+        Follow.objects.create(user=self.another_user, author=self.user)
         page_urls = [
             INDEX_URL,
             GROUP_URL,
             PROFILE_URL,
+            FOLLOW_INDEX_URL,
         ]
         for current_url in page_urls:
-            response = self.authorized_client.get(current_url)
+            response = self.authorized_client_2.get(current_url)
             self.assertEquals(
                 response.context['page'][0],
                 self.post
@@ -124,6 +134,19 @@ class PostPagesTests(TestCase):
         """Шаблон post сформирован с правильным контекстом."""
         response = self.authorized_client.get(self.POST_PAGE_URL)
         self.assertEquals(response.context['post'], self.post)
+    
+    def test_cache_after_time(self):
+        """Тест кеша страницы """
+        response_old = self.authorized_client.get(INDEX_URL)
+        Post.objects.create(
+            text='abracadabra',
+            author=self.user
+        )
+        response_new = self.authorized_client.get(INDEX_URL)
+        self.assertEqual(response_old.content, response_new.content)
+        cache.clear()
+        response_newest = self.authorized_client.get(INDEX_URL)
+        self.assertNotEqual(response_old.content, response_newest.content)
 
     def test_user_can_follow_author(self):
         """Проверка возможности подписки"""
@@ -139,10 +162,11 @@ class PostPagesTests(TestCase):
             user=self.user,
             author=self.author
         )
-        self.authorized_client.get(PROFILE_UNFOLLOW_URL)
+        self.authorized_client.get(self.PROFILE_UNFOLLOW_URL)
         self.assertFalse(Follow.objects.filter(
             user=self.user,
             author=self.author).exists())
+        pass
 
     def test_user_cant_follow_himself(self):
         """Проперка невозможности подписки на самого себя"""
@@ -157,35 +181,12 @@ class PostPagesTests(TestCase):
     def test_follow_context(self):
         """Новая запись пользователя появляется в ленте тех, кто на него
         подписан и не появляется в ленте тех, кто не подписан на него."""
-        Follow.objects.all().delete()
-        Post.objects.all().delete()
-        Follow.objects.create(user=self.user, author=self.author)
-        post_2 = Post.objects.create(
-            text='трали-вали',
-            author=self.author
-        )
-        # проверим, что пост отобразился на странице подписок у юзера
+        Follow.objects.create(user=self.another_user, author=self.user)
         self.assertIn(
-            post_2,
-            self.authorized_client.get(FOLLOW_INDEX_URL).context['page']
+            self.post,
+            self.authorized_client_2.get(FOLLOW_INDEX_URL).context['page']
         )
-        # залогинимся под другим юзером
-        self.authorized_client = Client()
-        self.authorized_client.force_login(self.another_user)
         self.assertNotIn(
-            post_2,
-            self.authorized_client.get(FOLLOW_INDEX_URL).context['page']
+            self.post,
+            self.authorized_client_3.get(FOLLOW_INDEX_URL).context['page']
         )
-
-    def test_cache_after_time(self):
-        """Тест кеша страницы """
-        response_old = self.authorized_client.get(INDEX_URL)
-        Post.objects.create(
-            text='abracadabra',
-            author=self.user
-        )
-        response_new = self.authorized_client.get(INDEX_URL)
-        self.assertEqual(response_old.content, response_new.content)
-        cache.clear()
-        response_newest = self.authorized_client.get(INDEX_URL)
-        self.assertNotEqual(response_old.content, response_newest.content)

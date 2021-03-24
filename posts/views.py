@@ -55,6 +55,7 @@ def profile(request, username):
     page = paginator.get_page(page_number)
     following = (
         request.user.is_authenticated
+        and (request.user != author)
         and Follow.objects.filter(
             user=request.user,
             author=author).exists()
@@ -70,14 +71,14 @@ def profile(request, username):
 def post_view(request, username, post_id):
     post = get_object_or_404(Post, author__username=username, id=post_id)
     comments = post.comments.all()
+    form = CommentForm()
     following = (
         request.user.is_authenticated
+        and (request.user != post.author)
         and Follow.objects.filter(
             user=request.user,
             author=post.author).exists()
     )
-    print(following)
-    form = CommentForm()
     return render(request, 'post.html', {
         'post': post,
         'author': post.author,
@@ -93,7 +94,7 @@ def add_comment(request, username, post_id):
                              author__username=username)
     form = CommentForm(request.POST or None)
     if not form.is_valid():
-        return render(request, 'post.html', {'form': form})
+        return redirect('posts:post', username, post_id)
     comment = form.save(commit=False)
     comment.author = request.user
     comment.post = post
@@ -146,14 +147,11 @@ def profile_follow(request, username):
 @login_required
 def profile_unfollow(request, username):
     """Функция для отписки от автора"""
-    author = get_object_or_404(User, username=username)
-    user_following_author = get_object_or_404(
-        Follow,
+    user_following_author = Follow.objects.get(
         user=request.user,
-        author=author
-    )
+        author__username=username)
     if user_following_author:
-        Follow.objects.filter(user=request.user, author=author).delete()
+        user_following_author.delete()
         return redirect('posts:profile', username=username)
 
 
