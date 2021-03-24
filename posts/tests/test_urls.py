@@ -18,7 +18,7 @@ FOLLOW_INDEX_URL = reverse('posts:follow_index')
 PROFILE_FOLLOW_URL = reverse('posts:profile_follow', args=[USERNAME])
 PROFILE_UNFOLLOW_URL = reverse('posts:profile_unfollow', args=[USERNAME])
 URL_NOT_EXISTS = reverse(
-    'posts:profile', 
+    'posts:profile',
     args=['strhfgd_fgdht_234trsfb_fsh2_3q4ergsfd_']
 )
 
@@ -112,7 +112,7 @@ class PostURLTests(TestCase):
     def test_guest_user_can_not_get_current_pages(self):
         """Страницы, доступные только авторизированным пользователям,
         перенаправят анонимного пользователя на страницу регистрации"""
-        urls = [ 
+        urls = [
             [self.guest_client.get(NEW_POST_URL, follow=True),
              f'{settings.LOGIN_URL}?next={NEW_POST_URL}'],
             [self.guest_client.get(FOLLOW_INDEX_URL, follow=True),

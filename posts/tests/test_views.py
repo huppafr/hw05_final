@@ -134,7 +134,7 @@ class PostPagesTests(TestCase):
         """Шаблон post сформирован с правильным контекстом."""
         response = self.authorized_client.get(self.POST_PAGE_URL)
         self.assertEquals(response.context['post'], self.post)
-    
+
     def test_cache_after_time(self):
         """Тест кеша страницы """
         response_old = self.authorized_client.get(INDEX_URL)

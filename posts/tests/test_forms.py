@@ -160,7 +160,7 @@ class PostFormTests(TestCase):
             response.context['comments'][0].author,
             self.user
         )
-    
+
     def test_anonymous_user_cant_create_post(self):
         """Анонимный пользователь не сможет создать пост"""
         post_text = 'абракадабра'
