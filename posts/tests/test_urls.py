@@ -76,36 +76,36 @@ class PostURLTests(TestCase):
                     template
                 )
 
-    def test_user_can_get_current_pages(self):
+    def test_user_can_get_current_pagessss(self):
         """Проверка доступности страниц для пользователей"""
         url_status_code = [
-            [self.authorized_client.get(INDEX_URL), 200],
-            [self.authorized_client.get(FOLLOW_INDEX_URL), 200],
-            [self.authorized_client.get(GROUP_URL), 200],
-            [self.authorized_client.get(ABOUT_AUTHOR_URL), 200],
-            [self.authorized_client.get(ABOUT_TECH_URL), 200],
-            [self.authorized_client.get(PROFILE_URL), 200],
-            [self.authorized_client.get(NEW_POST_URL), 200],
-            [self.authorized_client.get(self.POST_URL), 200],
-            [self.authorized_client.get(self.POST_EDIT_URL), 200],
-            [self.authorized_client.get(URL_NOT_EXISTS), 404],
+            [self.authorized_client, INDEX_URL, 200],
+            [self.authorized_client, FOLLOW_INDEX_URL, 200],
+            [self.authorized_client, GROUP_URL, 200],
+            [self.authorized_client, ABOUT_AUTHOR_URL, 200],
+            [self.authorized_client, ABOUT_TECH_URL, 200],
+            [self.authorized_client, PROFILE_URL, 200],
+            [self.authorized_client, NEW_POST_URL, 200],
+            [self.authorized_client, self.POST_URL, 200],
+            [self.authorized_client, self.POST_EDIT_URL, 200],
+            [self.authorized_client, URL_NOT_EXISTS, 404],
             # Юзер не яляется автором поста
-            [self.authorized_client_2.get(self.POST_EDIT_URL), 302],
-            [self.guest_client.get(INDEX_URL), 200],
-            [self.guest_client.get(GROUP_URL), 200],
-            [self.guest_client.get(ABOUT_AUTHOR_URL), 200],
-            [self.guest_client.get(ABOUT_TECH_URL), 200],
-            [self.guest_client.get(PROFILE_URL), 200],
-            [self.guest_client.get(FOLLOW_INDEX_URL), 302],
-            [self.guest_client.get(NEW_POST_URL), 302],
-            [self.guest_client.get(self.POST_URL), 200],
-            [self.guest_client.get(self.POST_EDIT_URL), 302],
-            [self.guest_client.get(URL_NOT_EXISTS), 404],
+            [self.authorized_client_2, self.POST_EDIT_URL, 302],
+            [self.guest_client, INDEX_URL, 200],
+            [self.guest_client, GROUP_URL, 200],
+            [self.guest_client, ABOUT_AUTHOR_URL, 200],
+            [self.guest_client, ABOUT_TECH_URL, 200],
+            [self.guest_client, PROFILE_URL, 200],
+            [self.guest_client, FOLLOW_INDEX_URL, 302],
+            [self.guest_client, NEW_POST_URL, 302],
+            [self.guest_client, self.POST_URL, 200],
+            [self.guest_client, self.POST_EDIT_URL, 302],
+            [self.guest_client, URL_NOT_EXISTS, 404],
         ]
-        for url, code in url_status_code:
-            with self.subTest():
+        for client, url, code in url_status_code:
+            with self.subTest(url=url):
                 self.assertEquals(
-                    url.status_code,
+                    client.get(url).status_code,
                     code
                 )
 
@@ -113,21 +113,24 @@ class PostURLTests(TestCase):
         """Страницы, доступные только авторизированным пользователям,
         перенаправят анонимного пользователя на страницу регистрации"""
         urls = [
-            [self.guest_client.get(NEW_POST_URL, follow=True),
+            [self.guest_client, NEW_POST_URL,
              f'{settings.LOGIN_URL}?next={NEW_POST_URL}'],
-            [self.guest_client.get(FOLLOW_INDEX_URL, follow=True),
+             [self.guest_client, FOLLOW_INDEX_URL,
              f'{settings.LOGIN_URL}?next={FOLLOW_INDEX_URL}'],
-            [self.guest_client.get(PROFILE_FOLLOW_URL, follow=True),
+            [self.guest_client, PROFILE_FOLLOW_URL,
              f'{settings.LOGIN_URL}?next={PROFILE_FOLLOW_URL}'],
-            [self.guest_client.get(PROFILE_UNFOLLOW_URL, follow=True),
+            [self.guest_client, PROFILE_UNFOLLOW_URL,
              f'{settings.LOGIN_URL}?next={PROFILE_UNFOLLOW_URL}'],
-            [self.guest_client.get(self.POST_EDIT_URL, follow=True),
+            [self.guest_client, self.POST_EDIT_URL,
              f'{settings.LOGIN_URL}?next={self.POST_EDIT_URL}'],
-            [self.guest_client.get(self.ADD_COMMENT_URL, follow=True),
+            [self.guest_client, self.ADD_COMMENT_URL,
              f'{settings.LOGIN_URL}?next={self.ADD_COMMENT_URL}'],
-            [self.authorized_client_2.get(self.POST_EDIT_URL, follow=True),
+            [self.authorized_client_2, self.POST_EDIT_URL,
              self.POST_URL],
         ]
-        for url, redirect_url in urls:
-            with self.subTest():
-                self.assertRedirects(url, redirect_url)
+        for client, url, redirect_url in urls:
+            with self.subTest(url=url):
+                self.assertRedirects(
+                    client.get(url, follow=True),
+                    redirect_url
+                )

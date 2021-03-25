@@ -93,12 +93,11 @@ def add_comment(request, username, post_id):
     post = get_object_or_404(Post, id=post_id,
                              author__username=username)
     form = CommentForm(request.POST or None)
-    if not form.is_valid():
-        return redirect('posts:post', username, post_id)
-    comment = form.save(commit=False)
-    comment.author = request.user
-    comment.post = post
-    comment.save()
+    if form.is_valid():
+        comment = form.save(commit=False)
+        comment.author = request.user
+        comment.post = post
+        comment.save()
     return redirect('posts:post', username, post_id)
 
 
@@ -147,12 +146,12 @@ def profile_follow(request, username):
 @login_required
 def profile_unfollow(request, username):
     """Функция для отписки от автора"""
-    user_following_author = Follow.objects.get(
+    user_following_author = get_object_or_404(
+        Follow,
         user=request.user,
         author__username=username)
-    if user_following_author:
-        user_following_author.delete()
-        return redirect('posts:profile', username=username)
+    user_following_author.delete()
+    return redirect('posts:profile', username=username)
 
 
 def page_not_found(request, exception):

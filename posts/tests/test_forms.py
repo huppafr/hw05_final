@@ -122,7 +122,8 @@ class PostFormTests(TestCase):
             follow=True
         )
         self.assertRedirects(response, self.POST_URL)
-        self.assertEquals(response.context['post'], self.post)
+        self.assertEquals(response.context['post'].text, form_data['text'])
+        self.assertEquals(response.context['post'].group.id, form_data['group'])
 
     def test_new_post_page_show_correct_context(self):
         """Шаблон new_post сформирован с правильным контекстом."""
@@ -163,6 +164,7 @@ class PostFormTests(TestCase):
 
     def test_anonymous_user_cant_create_post(self):
         """Анонимный пользователь не сможет создать пост"""
+        Post.objects.all().delete()
         post_text = 'абракадабра'
         form_data = {
             'group': self.group.id,
@@ -174,10 +176,10 @@ class PostFormTests(TestCase):
             follow=True
         )
         self.assertFalse(Post.objects.filter(text=post_text).exists())
+        self.assertTrue(len(Post.objects.all()) == 0)
 
     def test_anonymous_user_cant_edit_post(self):
-        """Анонимный пользователь не сможет создать пост"""
-        print(Post.objects.all()[0].group)
+        """Анонимный пользователь не сможет отредактировать пост"""
         post_text = 'Измененный текст абракадабры'
         form_data = {
             'text': post_text,
@@ -187,4 +189,4 @@ class PostFormTests(TestCase):
             data=form_data,
             follow=True
         )
-        self.assertFalse(Post.objects.filter(text=post_text).exists())
+        self.assertNotEquals(self.post, form_data['text'])
