@@ -122,8 +122,14 @@ class PostFormTests(TestCase):
             follow=True
         )
         self.assertRedirects(response, self.POST_URL)
-        self.assertEquals(response.context['post'].text, form_data['text'])
-        self.assertEquals(response.context['post'].group.id, form_data['group'])
+        self.assertEquals(
+            response.context['post'].text,
+            form_data['text']
+        )
+        self.assertEquals(
+            response.context['post'].group.id,
+            form_data['group']
+        )
 
     def test_new_post_page_show_correct_context(self):
         """Шаблон new_post сформирован с правильным контекстом."""

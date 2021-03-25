@@ -115,7 +115,7 @@ class PostURLTests(TestCase):
         urls = [
             [self.guest_client, NEW_POST_URL,
              f'{settings.LOGIN_URL}?next={NEW_POST_URL}'],
-             [self.guest_client, FOLLOW_INDEX_URL,
+            [self.guest_client, FOLLOW_INDEX_URL,
              f'{settings.LOGIN_URL}?next={FOLLOW_INDEX_URL}'],
             [self.guest_client, PROFILE_FOLLOW_URL,
              f'{settings.LOGIN_URL}?next={PROFILE_FOLLOW_URL}'],
