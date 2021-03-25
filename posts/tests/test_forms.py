@@ -181,11 +181,11 @@ class PostFormTests(TestCase):
             data=form_data,
             follow=True
         )
-        self.assertFalse(Post.objects.filter(text=post_text).exists())
         self.assertTrue(len(Post.objects.all()) == 0)
 
     def test_anonymous_user_cant_edit_post(self):
         """Анонимный пользователь не сможет отредактировать пост"""
+        old_post = Post.objects.get(id=1)
         post_text = 'Измененный текст абракадабры'
         form_data = {
             'text': post_text,
@@ -195,4 +195,5 @@ class PostFormTests(TestCase):
             data=form_data,
             follow=True
         )
-        self.assertNotEquals(self.post, form_data['text'])
+        new_post = Post.objects.get(id=1)
+        self.assertEquals(old_post.text, new_post.text)

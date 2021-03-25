@@ -181,10 +181,6 @@ class PostPagesTests(TestCase):
         """Новая запись пользователя появляется в ленте тех, кто на него
         подписан и не появляется в ленте тех, кто не подписан на него."""
         Follow.objects.create(user=self.another_user, author=self.user)
-        # self.assertIn(
-        #     self.post,
-        #     self.authorized_client_2.get(FOLLOW_INDEX_URL).context['page']
-        # )
         self.assertNotIn(
             self.post,
             self.authorized_client_3.get(FOLLOW_INDEX_URL).context['page']
